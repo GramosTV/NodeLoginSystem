@@ -10,8 +10,8 @@ const flash = require('express-flash');
 const session = require('express-session');
 const methodOverride = require('method-override');
 const mongo = require('mongodb');
-const mongoose = require('mongoose');
 const MongoClient = require('mongodb').MongoClient;
+let emailErrV = ''
 // PASTE YOUR DATABASE URL HERE:  
 const url = "";
 
@@ -54,9 +54,11 @@ app.use(methodOverride('_method'))
 
 app.get('/', checkAuthenticated, (req, res) => {
   res.render('index.ejs', { name: req.user.name })
+  emailErrV = ""
 })
 app.get('/login', checkNotAuthenticated, (req, res) => {
   res.render('login.ejs')
+  emailErrV = ""
 })
 app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
   successRedirect: '/',
@@ -64,22 +66,31 @@ app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
   failureFlash: true
 }))
 app.get('/register', checkNotAuthenticated, (req, res) => {
-  res.render('register.ejs')
+  res.render('register.ejs', {emailErr: emailErrV})
 })
+function search(nameKey, myArray){
+  for (var i=0; i < myArray.length; i++) {
+      if (myArray[i].name === nameKey) {
+          return myArray[i];
+      }
+  }
+}
 app.post('/register', checkNotAuthenticated, async (req, res) => {
  try {
    const hashedPassword = await bcrypt.hash(req.body.password, 10)
    MongoClient.connect(url, function(err, client) {  
     if (err) throw err; 
     const db = client.db(databaseName);
+    if (!users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
     const myobj = { name: req.body.name, email: req.body.email, password: hashedPassword };  
     db.collection('users').insertOne(myobj, function(err, res) {  
     if (err) throw err;  
     console.log("1 record inserted");  
     // client.close();  
-    });  
+    }) 
+    } else return
     });
-    MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
+    await MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
       if (error) {
         return console.log("Connection failed for some reason");
       }
@@ -96,7 +107,13 @@ app.post('/register', checkNotAuthenticated, async (req, res) => {
       email => {return users.find(user => user.email === email)},
       id => users.find(user => user.id === id)
       );
-    res.redirect('/login')
+    if (users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
+    emailErrV = "This Email is Already Taken"
+    res.redirect('/register')
+    } else {
+      emailErrV = ""
+      res.redirect('/login')
+    }
  } catch (err) {
    console.log(err)
    res.redirect('/register')
