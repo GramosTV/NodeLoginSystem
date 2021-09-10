@@ -2,6 +2,7 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config()
 }
 const express = require('express');
+path = require('path');
 const app = express();
 const bcrypt = require('bcrypt');
 const passport = require('passport');
@@ -11,9 +12,16 @@ const session = require('express-session');
 const methodOverride = require('method-override');
 const mongo = require('mongodb');
 const MongoClient = require('mongodb').MongoClient;
+const passVs = require('./pass')
+const fetch = require('node-fetch');
+const bodyParser = require('body-parser');
+const request = require('request-promise');
+
+
+
 let emailErrV = ''
 // PASTE YOUR DATABASE URL HERE:  
-const url = "";
+const url = passVs.dbUrl;
 
 const databaseName = "mydb";
 let users = []
@@ -41,7 +49,9 @@ initializePassport(passport,
 
 
 app.set('view-engine', 'ejs');
-app.use(express.urlencoded({ extended: false }));
+// app.use(express.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 app.use(flash());
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -66,7 +76,7 @@ app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
   failureFlash: true
 }))
 app.get('/register', checkNotAuthenticated, (req, res) => {
-  res.render('register.ejs', {emailErr: emailErrV})
+  res.render('register.ejs', {emailErr: emailErrV, captcha: passVs.recaptchaKey})
 })
 function search(nameKey, myArray){
   for (var i=0; i < myArray.length; i++) {
@@ -75,8 +85,37 @@ function search(nameKey, myArray){
       }
   }
 }
+
+
 app.post('/register', checkNotAuthenticated, async (req, res) => {
  try {
+   if(!req.body.captcha){
+    console.log("err");
+    console.log("captcha not checked")
+    }
+
+const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${passVs.serverCaptchaKey}&response=${req.body.captcha}`;
+
+const checkCaptcha = await request(verifyUrl,(err,response,body)=>{
+    
+    if(err){console.log(err); }
+
+    body = JSON.parse(body);
+    if(body.score > 0.5) {
+      console.log("captcha sucess! score: " + body.score)
+      return true
+    }
+    if(body.score < 0.5) {
+      console.log("captcha failed! score: " + body.score)
+      return false
+    }
+        
+})
+
+
+   
+   if(checkCaptcha) {
+     console.log("true")
    const hashedPassword = await bcrypt.hash(req.body.password, 10)
    MongoClient.connect(url, function(err, client) {  
     if (err) throw err; 
@@ -114,6 +153,9 @@ app.post('/register', checkNotAuthenticated, async (req, res) => {
       emailErrV = ""
       res.redirect('/login')
     }
+  } else {
+    res.redirect('/register')
+  }
  } catch (err) {
    console.log(err)
    res.redirect('/register')
