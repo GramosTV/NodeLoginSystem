@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt');
 const passport = require('passport');
 const initializePassport = require('./passport-config')
 const flash = require('express-flash');
-const session = require('express-session');
+const session = require('cookie-session');
 const methodOverride = require('method-override');
 const mongo = require('mongodb');
 const MongoClient = require('mongodb').MongoClient;
@@ -16,37 +16,37 @@ const passVs = require('./pass')
 const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
 const request = require('request-promise');
-
+const port = process.env.PORT || 5000
 
 
 let emailErrV = ''
 let captchaErrV = ''
-// PASTE YOUR DATABASE URL HERE:  
+// PASTE YOUR DATABASE URL HERE:
 const url = passVs.dbUrl;
 
 const databaseName = "mydb";
 let users = []
 MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
   if (error) {
-    return console.log("Connection failed for some reason");
+      return console.log("Connection failed for some reason");
   }
   console.log("Connection established - All well");
   const db = client.db(databaseName);
   const DBcollection = db.collection('users').find()
   users = []
   DBcollection.forEach(function (data, err) {
-  users.push(data)
+      users.push(data)
   })
   console.log(users)
 });
 
 
-initializePassport(passport, 
+initializePassport(passport,
   email => {return users.find(user => user.email === email)},
   id => users.find(user => user.id === id)
-  );
-  
-  
+);
+
+
 
 
 app.set('view-engine', 'ejs');
@@ -57,7 +57,8 @@ app.use(flash());
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  keys: ['x', 'y']
 }))
 app.use(passport.initialize());
 app.use(passport.session())
@@ -91,79 +92,79 @@ function search(nameKey, myArray){
 
 
 app.post('/register', checkNotAuthenticated, async (req, res) => {
- try {
-   if(!req.body.captcha){
-    console.log("err");
-    console.log("captcha not checked")
-    }
-
-const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${passVs.serverCaptchaKey}&response=${req.body.captcha}`;
-
-const checkCaptcha = await request(verifyUrl,(err,response,body)=>{
-    
-    if(err){console.log(err); }
-
-    body = JSON.parse(body);
-    if(body.score > 0.5) {
-      console.log("captcha sucess! score: " + body.score)
-      return true
-    }
-    if(body.score < 0.5) {
-      console.log("captcha failed! score: " + body.score)
-      return false
-    }
-        
-})
-
-
-   
-   if(checkCaptcha) {
-   const hashedPassword = await bcrypt.hash(req.body.password, 10)
-   MongoClient.connect(url, function(err, client) {  
-    if (err) throw err; 
-    const db = client.db(databaseName);
-    if (!users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
-    const myobj = { name: req.body.name, email: req.body.email, password: hashedPassword };  
-    db.collection('users').insertOne(myobj, function(err, res) {  
-    if (err) throw err;  
-    console.log("1 record inserted");  
-    // client.close();  
-    }) 
-    } else return
-    });
-    await MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
-      if (error) {
-        return console.log("Connection failed for some reason");
+  try {
+      if(!req.body.captcha){
+          console.log("err");
+          console.log("captcha not checked")
       }
-      console.log("Connection established - All well");
-      const db = client.db(databaseName);
-      const DBcollection = db.collection('users').find()
-      users = []
-      DBcollection.forEach(function (data, err) {
-      users.push(data)
+
+      const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${passVs.serverCaptchaKey}&response=${req.body.captcha}`;
+
+      const checkCaptcha = await request(verifyUrl,(err,response,body)=>{
+
+          if(err){console.log(err); }
+
+          body = JSON.parse(body);
+          if(body.score > 0.5) {
+              console.log("captcha sucess! score: " + body.score)
+              return true
+          }
+          if(body.score < 0.5) {
+              console.log("captcha failed! score: " + body.score)
+              return false
+          }
+
       })
-      console.log(users)
-    });
-    initializePassport(passport, 
-      email => {return users.find(user => user.email === email)},
-      id => users.find(user => user.id === id)
-      );
-    if (users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
-    emailErrV = "This Email is Already Taken"
-    res.redirect('/register')
-    } else {
-      emailErrV = ""
-      captchaErrV = ""
-      res.redirect('/login')
-    }
-  } else {
-    captchaErrV = "Recaptcha verification failed!"
-    res.redirect('/register')
+
+
+
+      if(checkCaptcha) {
+          const hashedPassword = await bcrypt.hash(req.body.password, 10)
+          MongoClient.connect(url, function(err, client) {
+              if (err) throw err;
+              const db = client.db(databaseName);
+              if (!users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
+                  const myobj = { name: req.body.name, email: req.body.email, password: hashedPassword };
+                  db.collection('users').insertOne(myobj, function(err, res) {
+                      if (err) throw err;
+                      console.log("1 record inserted");
+                      // client.close();
+                  })
+              } else return
+          });
+          await MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
+              if (error) {
+                  return console.log("Connection failed for some reason");
+              }
+              console.log("Connection established - All well");
+              const db = client.db(databaseName);
+              const DBcollection = db.collection('users').find()
+              users = []
+              DBcollection.forEach(function (data, err) {
+                  users.push(data)
+              })
+              console.log(users)
+          });
+          initializePassport(passport,
+              email => {return users.find(user => user.email === email)},
+              id => users.find(user => user.id === id)
+          );
+          if (users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
+              emailErrV = "This Email is Already Taken"
+              res.redirect('/register')
+          } else {
+              emailErrV = ""
+              captchaErrV = ""
+              res.redirect('/login')
+          }
+      } else {
+          captchaErrV = "Recaptcha verification failed!"
+          res.redirect('/register')
+      }
+  } catch (err) {
+      console.log(err)
+      res.redirect('/register')
   }
- } catch (err) {
-   console.log(err)
-   res.redirect('/register')
- }
 })
 app.delete('/logout', (req,res) => {
   req.logOut()
@@ -172,15 +173,15 @@ app.delete('/logout', (req,res) => {
 
 function checkAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
-    return next()
+      return next()
   }
   res.redirect('/login')
 }
 
 function checkNotAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
-    res.redirect('/')
+      res.redirect('/')
   }
   next()
 }
-app.listen(3000)
+app.listen(port)
