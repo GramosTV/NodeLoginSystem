@@ -1,6 +1,7 @@
 <script src="https://www.google.com/recaptcha/api.js?render=<%=captcha%>"></script>
 <h1>Register</h1>
 <h1><%=emailErr%></h1>
+<h1><%=captchaErr%></h1>
 <form action="/register" method="POST" id="registerForm">
   <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
   <input type="hidden" name="action" value="validate_captcha">

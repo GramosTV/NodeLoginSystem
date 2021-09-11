@@ -20,6 +20,7 @@ const request = require('request-promise');
 
 
 let emailErrV = ''
+let captchaErrV = ''
 // PASTE YOUR DATABASE URL HERE:  
 const url = passVs.dbUrl;
 
@@ -65,10 +66,12 @@ app.use(methodOverride('_method'))
 app.get('/', checkAuthenticated, (req, res) => {
   res.render('index.ejs', { name: req.user.name })
   emailErrV = ""
+  captchaErrV = ""
 })
 app.get('/login', checkNotAuthenticated, (req, res) => {
   res.render('login.ejs')
   emailErrV = ""
+  captchaErrV = ""
 })
 app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
   successRedirect: '/',
@@ -76,7 +79,7 @@ app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
   failureFlash: true
 }))
 app.get('/register', checkNotAuthenticated, (req, res) => {
-  res.render('register.ejs', {emailErr: emailErrV, captcha: passVs.recaptchaKey})
+  res.render('register.ejs', {emailErr: emailErrV, captchaErr: captchaErrV, captcha: passVs.recaptchaKey})
 })
 function search(nameKey, myArray){
   for (var i=0; i < myArray.length; i++) {
@@ -115,7 +118,6 @@ const checkCaptcha = await request(verifyUrl,(err,response,body)=>{
 
    
    if(checkCaptcha) {
-     console.log("true")
    const hashedPassword = await bcrypt.hash(req.body.password, 10)
    MongoClient.connect(url, function(err, client) {  
     if (err) throw err; 
@@ -151,9 +153,11 @@ const checkCaptcha = await request(verifyUrl,(err,response,body)=>{
     res.redirect('/register')
     } else {
       emailErrV = ""
+      captchaErrV = ""
       res.redirect('/login')
     }
   } else {
+    captchaErrV = "Recaptcha verification failed!"
     res.redirect('/register')
   }
  } catch (err) {
