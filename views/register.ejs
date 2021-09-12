@@ -23,10 +23,12 @@
 
 
 <script>
-  
-     document.getElementById('registerForm').addEventListener('submit',onSubmit);
+  let flag = true
+     document.getElementById('registerForm').addEventListener('submit', onSubmit);
     
     function onSubmit(e){
+      if (flag) {
+      flag = false
         
         grecaptcha.execute('<%=captcha%>', {action: 'homepage'}).then(function(token) {
 
@@ -46,6 +48,7 @@
             body:JSON.stringify({name:name, email:email, password:password, captcha:captcha})
             }).then(res => res.json()).then(data => { alert("msg: " + data.msg + ", success?: " + data.success + ", score: " + data.score)})     
         });
+      }
         
     }
 </script>

@@ -81,6 +81,19 @@ app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
 }))
 app.get('/register', checkNotAuthenticated, (req, res) => {
   res.render('register.ejs', {emailErr: emailErrV, captchaErr: captchaErrV, captcha: passVs.recaptchaKey})
+  MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
+    if (error) {
+        return console.log("Connection failed for some reason");
+    }
+    console.log("Connection established - All well");
+    const db = client.db(databaseName);
+    const DBcollection = db.collection('users').find()
+    
+    DBcollection.forEach(function (data, err) {
+        users.push(data)
+    })
+    // console.log(users)
+});
 })
 function search(nameKey, myArray){
   for (var i=0; i < myArray.length; i++) {
@@ -120,31 +133,33 @@ app.post('/register', checkNotAuthenticated, async (req, res) => {
 
       if(checkCaptcha) {
           const hashedPassword = await bcrypt.hash(req.body.password, 10)
-          MongoClient.connect(url, function(err, client) {
+          await MongoClient.connect(url, function(err, client) {
               if (err) throw err;
               const db = client.db(databaseName);
               if (!users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
+                console.log('email: ' + users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase()))
                   const myobj = { name: req.body.name, email: req.body.email, password: hashedPassword };
                   db.collection('users').insertOne(myobj, function(err, res) {
                       if (err) throw err;
                       console.log("1 record inserted");
                       // client.close();
                   })
-              } else return
+              }
           });
           await MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
-              if (error) {
-                  return console.log("Connection failed for some reason");
-              }
-              console.log("Connection established - All well");
-              const db = client.db(databaseName);
-              const DBcollection = db.collection('users').find()
-              users = []
-              DBcollection.forEach(function (data, err) {
-                  users.push(data)
-              })
-              console.log(users)
-          });
+            if (error) {
+                return console.log("Connection failed for some reason");
+            }
+            console.log("Connection established - All well");
+            const db = client.db(databaseName);
+            const DBcollection = db.collection('users').find()
+            
+            DBcollection.forEach(function (data, err) {
+                users.push(data)
+            })
+            // console.log(users)
+        });
+          
           initializePassport(passport,
               email => {return users.find(user => user.email === email)},
               id => users.find(user => user.id === id)
