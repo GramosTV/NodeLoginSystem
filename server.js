@@ -17,6 +17,7 @@ const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
 const request = require('request-promise');
 const port = process.env.PORT || 5000
+let registerFlag = true;
 
 
 let emailErrV = ''
@@ -33,7 +34,6 @@ MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {
   console.log("Connection established - All well");
   const db = client.db(databaseName);
   const DBcollection = db.collection('users').find()
-  users = []
   DBcollection.forEach(function (data, err) {
       users.push(data)
   })
@@ -139,11 +139,15 @@ app.post('/register', checkNotAuthenticated, async (req, res) => {
               if (!users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase())) {
                 console.log('email: ' + users.find(o => o.email.toLowerCase() === req.body.email.toLowerCase()))
                   const myobj = { name: req.body.name, email: req.body.email, password: hashedPassword };
+                  if (registerFlag) {
                   db.collection('users').insertOne(myobj, function(err, res) {
                       if (err) throw err;
                       console.log("1 record inserted");
                       // client.close();
+                      registerFlag = false
                   })
+                }
+                  setTimeout(() => {registerFlag = true}, 1000)
               }
           });
           await MongoClient.connect(url, { useNewUrlParser: true }, (error, client) => {

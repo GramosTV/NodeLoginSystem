@@ -17,7 +17,7 @@
     <label for="password">Password</label>
     <input type="password" id="password" name="password" required>
   </div>
-  <button type="submit">Register</button>
+  <button type="submit" id="butt">Register</button>
 </form>
 <a href="/login">Login</a>
 
@@ -28,7 +28,10 @@
     
     function onSubmit(e){
       if (flag) {
+      document.getElementById("butt").disabled = 'true';
+
       flag = false
+      setTimeout(function(){flag = true; document.getElementById("butt").disabled = 'false';}, 3000)
         
         grecaptcha.execute('<%=captcha%>', {action: 'homepage'}).then(function(token) {
 
